@@ -1,16 +1,13 @@
 import operator
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from deap import base
 from deap import creator
 from deap import gp
-from deap import tools
 from sklearn.model_selection import train_test_split
+from selection_methods import *
 
-from Evolve import *
-from AnnealedNSGA import *
 
 data = pd.read_csv('train.csv')
 data.drop(['Name', 'Ticket', 'Cabin'], axis=1, inplace=True)
@@ -66,8 +63,6 @@ def false_rates(classifier, x, y) -> (float, float):
 creator.create("FitnessMin", base.Fitness, weights=(-1.0, -1.0))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin)
 
-random.seed(25)
-
 
 def activation(x):
     return np.divide(1, 1 + np.exp(np.negative(x)))
@@ -111,10 +106,8 @@ def evalPerformance(individual, pset):
 toolbox.register("evaluate", evalPerformance, pset=pset)
 
 
-toolbox.register("select", annealed_nsga_shuffled)
-# toolbox.register("select", nsga_shuffle_selection)
-# toolbox.register("select", annealed_nsga)
-# toolbox.register("select", nsga_selection)
+toolbox.register("select", annealed_nsga)
+
 
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
@@ -135,24 +128,26 @@ def pareto_dominance(ind1, ind2):
     return not_equal
 
 
-NGEN = 398
+NGEN = 10
 MU = 250
 LAMBDA = 250
 CXPB = 0.5
 MUTPB = 0.2
 
+
+def test(fv):
+    d = [f.crowding_dist if 'crowding_dist' in dir(f) else 0 for f in fv]
+    d = [x for x in d if x != float("inf")]
+    m = np.mean(d)
+    return m
+
 pop = toolbox.population(n=500)
 hof = tools.ParetoFront()
-stats = tools.Statistics(lambda ind: ind.fitness.values)
-stats.register("avg", np.mean, axis=0)
-stats.register("std", np.std, axis=0)
-stats.register("min", np.min, axis=0)
-stats.register("max", np.max, axis=0)
+stats = tools.Statistics(lambda ind: ind.fitness)
+stats.register("avg", lambda fv: np.mean([f.values for f in fv]))
+stats.register("diversity", test)
 
 pop, logbook = evolve(pop, toolbox, MU, LAMBDA, CXPB, MUTPB, NGEN, stats, hof)
-
-for x in hof:
-    print(x.fitness)
 
 
 def classify(fun, x_in):
@@ -167,6 +162,7 @@ test_data['Sex'] = test_data['Sex'].map(lambda x: hash(x))
 test_data['Embarked'] = test_data['Embarked'].map(lambda x: hash(x))
 test_data.fillna(value=-10, axis=1, inplace=True)
 
+"""
 output = []
 for i in range(len(test_data)):
     row = {'PassengerId': 892 + i}
@@ -176,13 +172,19 @@ for i in range(len(test_data)):
         row['Individual' + str(j + 1)] = classify(compiled[j], test_data.values[i])
     output.append(row)
 pd.DataFrame(output).to_csv(path_or_buf='predictions.csv', index=False)
+"""
 
-
-gen, avg, min_, max_ = logbook.select("gen", "avg", "min", "max")
+gen, avg = logbook.select("gen", "avg")
 plt.plot(gen, avg, label="average")
-plt.plot(gen, min_, label="minimum")
 plt.xlabel("Generation")
 plt.ylabel("Fitness")
+plt.legend(loc="upper left")
+plt.show()
+
+crowding = logbook.select("diversity")
+plt.plot(gen, crowding, label="average crowding distance")
+plt.xlabel("Generation")
+plt.ylabel("Average Distance")
 plt.legend(loc="upper left")
 plt.show()
 
@@ -200,25 +202,72 @@ plt.ylabel("False Negative")
 plt.title("Pareto Front")
 plt.show()
 
-f1 = np.array(fitness_1)
-f2 = np.array(fitness_2)
+f1 = np.array([1, 0] + fitness_1)
+f2 = np.array([0, 1] + fitness_2)
 
 print("Area Under Curve: %s" % (np.sum(np.abs(np.diff(f1))*f2[:-1])))
 
+
 """
-    AnnealedNSGA
-    Area Under Curve: 0.042735042735
-    Area Under Curve: 0.050041356493
-    
-    AnnealedNSGA Shuffled
-    Area Under Curve: 0.0715467328371
-    Area Under Curve: 0.055417700579
-    
     NSGA
-    Area Under Curve: 0.104769782189
-    Area Under Curve: 0.105183347119
+    ----
+    Gens: 1000
+    AUC: 0.09098428453267163
+
+    MyNSGA
+    ------
+    Gens: 1000
+    AUC: 0.10931899641577061
+
+    AnnealedNSGA
+    ------------
+    0.08312655086848636
     
-    NSGA Shuffled
-    Area Under Curve: 0.0814722911497
-    Area Under Curve: 0.0821615660325
+    Gens: 400
+    Temp: 0.001
+    AUC: 0.06630824372759857
+    
+    Temp: 0.01
+    AUC: 0.04576785221946512
+    AUC: 0.058450510063413286
+    
+    Temp: 0.05
+    AUC: 0.0676867934932451
+    
+    Temp: 0.1
+    AUC: 0.05100634132892198
+    
+    Temp: 1
+    AUC: 0.05514199062586159
+    
+    Temp: 10
+    AUC: 0.09746346843121036
+    
+    Gens: 1000
+    Temp: 1.0e300
+    AUC: 0.09911772814998622
+    
+    Temp: 1.0e180
+    AUC: 0.03336090432864626
+    
+    Temp: 1.0e90
+    AUC: 0.03818582850840915
+    
+    Temp: 1.0e45
+    AUC: 0.029225255031706643
+    
+    Temp: 1.0e30
+    AUC: 0.009374138406396471
+    
+    Temp: 1.0e20
+    AUC: 0.012682657843948167
+    
+    Temp: 1.0e10
+    AUC: 0.04769782189137028
+    
+    Temp: 1.0
+    AUC: 0.01833471188309898
+    
+    Temp: 1.0e-10
+    AUC: 0.02109181141439206
 """
