@@ -1,5 +1,4 @@
 import operator
-
 import matplotlib.pyplot as plt
 import pandas as pd
 from deap import base
@@ -33,8 +32,8 @@ def accuracy(classifier, x, y) -> float:
     return 0 if len(x_test) == 0 else num_correct / len(x_test)
 
 
-def false_rates(classifier, x, y) -> (float, float):
-    """Function that returns the false positive and false negative rate of a classifier"""
+def false_rates_old(classifier, x, y) -> (float, float):
+    """Returns the false positive and false negative rate of a classifier"""
     num_negative = 0
     incorrect_negative = 0
     num_positive = 0
@@ -59,6 +58,23 @@ def false_rates(classifier, x, y) -> (float, float):
         fn = incorrect_positive / num_positive
     return fp, fn
 
+
+def false_rates(classifier, x, y) -> (float, float):
+    """Returns the false positive and false negative rate of a classifier"""
+
+    num_negative = y.values.count(0)
+    num_positive = len(y.values) - num_negative
+
+    pred = [1 if classifier(x_in[0], x_in[1], x_in[2], x_in[3], x_in[4], x_in[5], x_in[6]) > 0 else 0 for x_in in x.values]
+
+    zipped = list(zip(pred, y.values))
+    incorrect_negative = zipped.count((1, 0))
+    incorrect_positive = zipped.count((0, 1))
+
+    fp = 0 if num_negative == 0 else incorrect_negative / num_negative
+    fn = 0 if num_positive == 0 else incorrect_positive / num_positive
+
+    return fp, fn
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.0, -1.0))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin)
@@ -106,7 +122,7 @@ def evalPerformance(individual, pset):
 toolbox.register("evaluate", evalPerformance, pset=pset)
 
 
-toolbox.register("select", annealed_nsga)
+toolbox.register("select", mynsga)
 
 
 toolbox.register("mate", gp.cxOnePoint)
@@ -128,24 +144,20 @@ def pareto_dominance(ind1, ind2):
     return not_equal
 
 
-NGEN = 10
+NGEN = 1000
 MU = 250
 LAMBDA = 250
 CXPB = 0.5
 MUTPB = 0.2
 
 
-def test(fv):
-    d = [f.crowding_dist if 'crowding_dist' in dir(f) else 0 for f in fv]
-    d = [x for x in d if x != float("inf")]
-    m = np.mean(d)
-    return m
-
 pop = toolbox.population(n=500)
 hof = tools.ParetoFront()
 stats = tools.Statistics(lambda ind: ind.fitness)
-stats.register("avg", lambda fv: np.mean([f.values for f in fv]))
-stats.register("diversity", test)
+stats.register('avg_fitness', lambda fv: np.mean([f.values for f in fv], axis=0))
+stats.register('avg_crowding_dist', lambda fv: np.mean([x for x in [f.crowding_dist if 'crowding_dist' in dir(f) else 0
+                                                                    for f in fv] if x != float("inf")]))
+stats.register('fitness_variance', lambda fv: np.linalg.norm(np.std([f.values for f in fv], axis=0)))
 
 pop, logbook = evolve(pop, toolbox, MU, LAMBDA, CXPB, MUTPB, NGEN, stats, hof)
 
@@ -174,17 +186,25 @@ for i in range(len(test_data)):
 pd.DataFrame(output).to_csv(path_or_buf='predictions.csv', index=False)
 """
 
-gen, avg = logbook.select("gen", "avg")
-plt.plot(gen, avg, label="average")
-plt.xlabel("Generation")
-plt.ylabel("Fitness")
+gen, avg = logbook.select('gen', 'avg_fitness')
+plt.plot(gen, [x[0] for x in avg], label='average false positive')
+plt.plot(gen, [x[1] for x in avg], label='average false negative')
+plt.xlabel('Generation')
+plt.ylabel('Fitness')
 plt.legend(loc="upper left")
 plt.show()
 
-crowding = logbook.select("diversity")
-plt.plot(gen, crowding, label="average crowding distance")
+crowding = logbook.select('fitness_variance')
+plt.plot(gen, crowding)
 plt.xlabel("Generation")
-plt.ylabel("Average Distance")
+plt.ylabel("Norm of Variance in Fitness")
+plt.legend(loc="upper left")
+plt.show()
+
+crowding = logbook.select('avg_crowding_dist')
+plt.plot(gen, crowding)
+plt.xlabel("Generation")
+plt.ylabel("Average Crowding Distance")
 plt.legend(loc="upper left")
 plt.show()
 
@@ -207,6 +227,24 @@ f2 = np.array([0, 1] + fitness_2)
 
 print("Area Under Curve: %s" % (np.sum(np.abs(np.diff(f1))*f2[:-1])))
 
+"""
+NGEN = 1000
+MU = 250
+LAMBDA = 250
+CXPB = 0.5
+MUTPB = 0.2
+start temp = 1e50
+temp decrease = 2
+
+MyNSGA:
+0.03501516404742211
+
+Annealed NSGA:
+0.028535980148883373
+NSGA:
+
+
+"""
 
 """
     NSGA
@@ -229,7 +267,6 @@ print("Area Under Curve: %s" % (np.sum(np.abs(np.diff(f1))*f2[:-1])))
     
     Temp: 0.01
     AUC: 0.04576785221946512
-    AUC: 0.058450510063413286
     
     Temp: 0.05
     AUC: 0.0676867934932451
@@ -258,6 +295,7 @@ print("Area Under Curve: %s" % (np.sum(np.abs(np.diff(f1))*f2[:-1])))
     
     Temp: 1.0e30
     AUC: 0.009374138406396471
+    0.05845051006341329
     
     Temp: 1.0e20
     AUC: 0.012682657843948167

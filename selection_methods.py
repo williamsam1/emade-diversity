@@ -140,43 +140,6 @@ def assign_crowding_distance_old(individuals):
         individuals[i].fitness.crowding_dist = dist
 
 
-def random_bubble_select(l, temp, k, key=None, reverse=False):
-    assert temp >= 0, "Temperature must be >= 0"
-
-    def val_key(x):
-        if key is None:
-            return -x if reverse else x
-        else:
-            return -key(x) if reverse else key(x)
-
-    if len(l) <= 1:
-        return l
-
-    selected = []
-    remaining = l
-    for i in range(min(k, len(l))):
-        cur_min = remaining[0]
-
-        for j in range(len(remaining) - 1):
-            r = random.random()
-            better = False
-
-            if val_key(l[j]) == val_key(cur_min):
-                better = r <= 0.5
-            elif val_key(l[j]) < val_key(cur_min):
-                better = r <= exp(-temp / abs(val_key(cur_min) - val_key(l[j]))) / 2 + 1 / 2
-            else:
-                better = r > exp(-temp / abs(val_key(cur_min) - val_key(l[j]))) / 2 + 1 / 2
-
-            if better:
-                cur_min = l[j]
-
-        selected.append(cur_min)
-        remaining.remove(cur_min)
-
-    return selected
-
-
 def random_merge_sort(l, temp, key=None, reverse=False):
     """
     Sorts the list randomly according to the given temperature
@@ -262,7 +225,7 @@ def random_merge(a, b, temp, key=None, reverse=False):
 
 
 def evolve(initial_population, toolbox, population_size, num_children, cxpb, mutpb, ngen, stats=None, hall_of_fame=None,
-           start_temp=None, temp_lambda = 1.12202):
+           start_temp=None, temp_lambda=2):
     """
     Main evolutionary loop
     """
@@ -284,9 +247,10 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
     record = stats.compile(population) if stats is not None else {}
     logbook.record(gen=0, nevals=len(invalid_ind), **record)
 
-    temp = (1.0e308 if ngen >= 1923 else (1.0e-20 * (1.12202 ** (ngen / 2))) ** 2) if start_temp is None else start_temp
+    # temp = (1.0e308 if ngen >= 1923 else (1.0e-20 * (1.12202 ** (ngen / 2))) ** 2) if start_temp is None else start_temp
     # temp = (1.0e308 if ngen >= 1923 else (9.35e-272 * 2**(ngen/2)) * 2**(ngen/2)) if start_temp is None else start_temp
-
+    temp = 1.0e50
+    print(temp)
     for gen in range(1, ngen + 1):
         # Vary the population
         offspring = toolbox.vary(population, toolbox, num_children, cxpb, mutpb)
@@ -336,23 +300,4 @@ def varOr(population, toolbox, num_children, cxpb, mutpb):
         else:                           # Apply reproduction
             offspring.append(random.choice(population))
     return offspring
-
-
-def fit_pareto_curve(pareto_front):
-    """Fits a model curve to a Pareto front
-
-    :param pareto_front: Pareto optimal individuals
-    :return: Parameter vector with weight parameter of length n, norm parameter, and level parameter
-    """
-    def _error_func(parameters: np.ndarray):
-        return sum([_error_func_single(i.fitness, parameters[:-2], parameters[-2], parameters[-1]) for i in pareto_front])
-    n = len(pareto_front[0].fitness.values)
-    x0 = np.concatenate((np.ones(n), [2], [1]))
-    bounds = [(0, None)] * n + [(1, None), (0, None)]
-    opt = minimize(_error_func, x0, bounds=bounds)
-    return opt.x[:-2], opt.x[-2], opt.x[-1]
-
-
-def _error_func_single(fitness: Fitness, weights: np.ndarray, p: float, r: float):
-    return (np.sum(np.multiply(weights, np.power(np.abs(np.array(fitness.values) - 1), p))) - r ** p) ** 2
 
