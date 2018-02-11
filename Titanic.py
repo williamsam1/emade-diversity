@@ -205,7 +205,7 @@ plt.show()
 
 plt.plot(gen, geno_metric['avg_length'])
 plt.xlabel("Generation")
-plt.ylabel("Average Length")
+plt.ylabel("Average Tree String Length")
 plt.legend(loc="upper left")
 plt.show()
 
