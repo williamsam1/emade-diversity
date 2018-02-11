@@ -233,10 +233,24 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
 
+    # Setup genotype metrics
+    geno_diversity = {'add': [], 'heaviside': [], 'subtract': [], 'activation': [], 'avg_length': []}
+    add_sum = 0
+    heav_sum = 0
+    sub_sum = 0
+    act_sum = 0
+    len_sum = 0
+
     # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
     for ind, fit in zip(invalid_ind, fitnesses):
+        for i in invalid_ind:
+            add_sum += str(i).count('add')
+            heav_sum += str(i).count('heaviside')
+            sub_sum += str(i).count('subtract')
+            act_sum += str(i).count('activation')
+            len_sum += len(str(i))
         ind.fitness.values = fit
 
     # Update hall of fame
@@ -246,12 +260,25 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
     # Update statistics
     record = stats.compile(population) if stats is not None else {}
     logbook.record(gen=0, nevals=len(invalid_ind), **record)
+    geno_diversity['add'].append(add_sum)
+    geno_diversity['heaviside'].append(heav_sum)
+    geno_diversity['subtract'].append(sub_sum)
+    geno_diversity['activation'].append(act_sum)
+    geno_diversity['avg_length'].append(len_sum / len(invalid_ind))
 
     # temp = (1.0e308 if ngen >= 1923 else (1.0e-20 * (1.12202 ** (ngen / 2))) ** 2) if start_temp is None else start_temp
     # temp = (1.0e308 if ngen >= 1923 else (9.35e-272 * 2**(ngen/2)) * 2**(ngen/2)) if start_temp is None else start_temp
     temp = 1.0e50
     print(temp)
+
     for gen in range(1, ngen + 1):
+        # Setup geno-metric counts
+        add_sum = 0
+        heav_sum = 0
+        sub_sum = 0
+        act_sum = 0
+        len_sum = 0
+
         # Vary the population
         offspring = toolbox.vary(population, toolbox, num_children, cxpb, mutpb)
 
@@ -259,6 +286,12 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
         for ind, fit in zip(invalid_ind, fitnesses):
+            for i in invalid_ind:
+                add_sum += str(i).count('add')
+                heav_sum += str(i).count('heaviside')
+                sub_sum += str(i).count('subtract')
+                act_sum += str(i).count('activation')
+                len_sum += len(str(i))
             ind.fitness.values = fit
 
         # Update hall of fame
@@ -272,8 +305,15 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
         # Update statistics
         record = stats.compile(population) if stats is not None else {}
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
+        geno_diversity['add'].append(add_sum)
+        geno_diversity['heaviside'].append(heav_sum)
+        geno_diversity['subtract'].append(sub_sum)
+        geno_diversity['activation'].append(act_sum)
+        geno_diversity['avg_length'].append(len_sum / len(invalid_ind))
 
-    return population, logbook
+        # print('gen completed')
+
+    return population, logbook, geno_diversity
 
 
 def varOr(population, toolbox, num_children, cxpb, mutpb):
@@ -300,4 +340,3 @@ def varOr(population, toolbox, num_children, cxpb, mutpb):
         else:                           # Apply reproduction
             offspring.append(random.choice(population))
     return offspring
-

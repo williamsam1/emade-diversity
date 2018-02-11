@@ -62,7 +62,7 @@ def false_rates_old(classifier, x, y) -> (float, float):
 def false_rates(classifier, x, y) -> (float, float):
     """Returns the false positive and false negative rate of a classifier"""
 
-    num_negative = y.values.count(0)
+    num_negative = y.values.tolist().count(0)
     num_positive = len(y.values) - num_negative
 
     pred = [1 if classifier(x_in[0], x_in[1], x_in[2], x_in[3], x_in[4], x_in[5], x_in[6]) > 0 else 0 for x_in in x.values]
@@ -144,7 +144,7 @@ def pareto_dominance(ind1, ind2):
     return not_equal
 
 
-NGEN = 1000
+NGEN = 100
 MU = 250
 LAMBDA = 250
 CXPB = 0.5
@@ -159,7 +159,7 @@ stats.register('avg_crowding_dist', lambda fv: np.mean([x for x in [f.crowding_d
                                                                     for f in fv] if x != float("inf")]))
 stats.register('fitness_variance', lambda fv: np.linalg.norm(np.std([f.values for f in fv], axis=0)))
 
-pop, logbook = evolve(pop, toolbox, MU, LAMBDA, CXPB, MUTPB, NGEN, stats, hof)
+pop, logbook, geno_metric = evolve(pop, toolbox, MU, LAMBDA, CXPB, MUTPB, NGEN, stats, hof)
 
 
 def classify(fun, x_in):
@@ -191,6 +191,21 @@ plt.plot(gen, [x[0] for x in avg], label='average false positive')
 plt.plot(gen, [x[1] for x in avg], label='average false negative')
 plt.xlabel('Generation')
 plt.ylabel('Fitness')
+plt.legend(loc="upper left")
+plt.show()
+
+plt.plot(gen, geno_metric['add'], label='add primitive')
+plt.plot(gen, geno_metric['heaviside'], label='heaviside primitive')
+plt.plot(gen, geno_metric['subtract'], label='subtract primitive')
+plt.plot(gen, geno_metric['activation'], label='activation primitive')
+plt.xlabel("Generation")
+plt.ylabel("Occurrence of Primitives")
+plt.legend(loc="upper left")
+plt.show()
+
+plt.plot(gen, geno_metric['avg_length'])
+plt.xlabel("Generation")
+plt.ylabel("Average Length")
 plt.legend(loc="upper left")
 plt.show()
 
@@ -260,52 +275,52 @@ NSGA:
     AnnealedNSGA
     ------------
     0.08312655086848636
-    
+
     Gens: 400
     Temp: 0.001
     AUC: 0.06630824372759857
-    
+
     Temp: 0.01
     AUC: 0.04576785221946512
-    
+
     Temp: 0.05
     AUC: 0.0676867934932451
-    
+
     Temp: 0.1
     AUC: 0.05100634132892198
-    
+
     Temp: 1
     AUC: 0.05514199062586159
-    
+
     Temp: 10
     AUC: 0.09746346843121036
-    
+
     Gens: 1000
     Temp: 1.0e300
     AUC: 0.09911772814998622
-    
+
     Temp: 1.0e180
     AUC: 0.03336090432864626
-    
+
     Temp: 1.0e90
     AUC: 0.03818582850840915
-    
+
     Temp: 1.0e45
     AUC: 0.029225255031706643
-    
+
     Temp: 1.0e30
     AUC: 0.009374138406396471
     0.05845051006341329
-    
+
     Temp: 1.0e20
     AUC: 0.012682657843948167
-    
+
     Temp: 1.0e10
     AUC: 0.04769782189137028
-    
+
     Temp: 1.0
     AUC: 0.01833471188309898
-    
+
     Temp: 1.0e-10
     AUC: 0.02109181141439206
 """
