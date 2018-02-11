@@ -199,7 +199,7 @@ plt.plot(gen, geno_metric['heaviside'], label='heaviside primitive')
 plt.plot(gen, geno_metric['subtract'], label='subtract primitive')
 plt.plot(gen, geno_metric['activation'], label='activation primitive')
 plt.xlabel("Generation")
-plt.ylabel("Occurrence of Primitives")
+plt.ylabel("Average Occurrence of Primitives Per Individual")
 plt.legend(loc="upper left")
 plt.show()
 

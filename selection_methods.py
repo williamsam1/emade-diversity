@@ -240,7 +240,7 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
     sub_sum = 0
     act_sum = 0
     len_sum = 0
-    node_sum = 0
+    ind_sum = 0
 
     # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
@@ -248,7 +248,8 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
     for ind, fit in zip(invalid_ind, fitnesses):
         ind.fitness.values = fit
 
-    node_sum += len(invalid_ind)
+    # Update genotypic metrics
+    ind_sum += len(invalid_ind)
     for i in invalid_ind:
         add_sum += str(i).count('add')
         heav_sum += str(i).count('heaviside')
@@ -263,10 +264,10 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
     # Update statistics
     record = stats.compile(population) if stats is not None else {}
     logbook.record(gen=0, nevals=len(invalid_ind), **record)
-    geno_diversity['add'].append(add_sum / node_sum)
-    geno_diversity['heaviside'].append(heav_sum / node_sum)
-    geno_diversity['subtract'].append(sub_sum / node_sum)
-    geno_diversity['activation'].append(act_sum / node_sum)
+    geno_diversity['add'].append(add_sum / ind_sum)
+    geno_diversity['heaviside'].append(heav_sum / ind_sum)
+    geno_diversity['subtract'].append(sub_sum / ind_sum)
+    geno_diversity['activation'].append(act_sum / ind_sum)
     geno_diversity['avg_length'].append(len_sum / len(invalid_ind))
 
     # temp = (1.0e308 if ngen >= 1923 else (1.0e-20 * (1.12202 ** (ngen / 2))) ** 2) if start_temp is None else start_temp
@@ -281,7 +282,7 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
         sub_sum = 0
         act_sum = 0
         len_sum = 0
-        node_sum = 0
+        ind_sum = 0
 
         # Vary the population
         offspring = toolbox.vary(population, toolbox, num_children, cxpb, mutpb)
@@ -292,7 +293,8 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
 
-        node_sum += len(invalid_ind)
+        # Update genotypic metrics
+        ind_sum += len(invalid_ind)
         for i in invalid_ind:
             add_sum += str(i).count('add')
             heav_sum += str(i).count('heaviside')
@@ -311,10 +313,10 @@ def evolve(initial_population, toolbox, population_size, num_children, cxpb, mut
         # Update statistics
         record = stats.compile(population) if stats is not None else {}
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
-        geno_diversity['add'].append(add_sum / node_sum)
-        geno_diversity['heaviside'].append(heav_sum / node_sum)
-        geno_diversity['subtract'].append(sub_sum / node_sum)
-        geno_diversity['activation'].append(act_sum / node_sum)
+        geno_diversity['add'].append(add_sum / ind_sum)
+        geno_diversity['heaviside'].append(heav_sum / ind_sum)
+        geno_diversity['subtract'].append(sub_sum / ind_sum)
+        geno_diversity['activation'].append(act_sum / ind_sum)
         geno_diversity['avg_length'].append(len_sum / len(invalid_ind))
 
         # print('gen completed')
